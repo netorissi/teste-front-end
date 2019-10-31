@@ -1,4 +1,4 @@
-# Teste iCasei: Front-End
+# Teste iCasei: Front-End React
 Desenvolver uma aplicação HTML5
 
 ## Instruções
