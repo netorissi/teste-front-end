@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
+import { withRouter } from 'react-router-dom';
 import axios from 'axios';
+import * as routes from '../routes/names';
 import { 
     withStyles,
     Grid,
@@ -9,8 +11,9 @@ import {
 } from '@material-ui/core';
 import style from '../assets/styles/default';
 import { MdSearch } from 'react-icons/md';
+import VideoView from '../components/VideoView';
 
-const URL_1 = 'https://www.googleapis.com/youtube/v3/search?part=id,snippet&maxResults=20&q=';
+const URL_1 = 'https://www.googleapis.com/youtube/v3/search?part=id,snippet&maxResults=15&q=';
 const URL_2 = '&key=AIzaSyAH3AcuuFSQPCGGM3sa7n44_I_SBSsyTlo';
 
 class Home extends Component {
@@ -81,11 +84,10 @@ class Home extends Component {
                 const data = resp.data;
                 const pageToken = data.nextPageToken;
                 let newVideos = videos || [];
-                console.log(data.items.length)
                 
-                if (data.items.length > 0) 
-                    newVideos.push(data.items);
-
+                if (data.items.length > 0)
+                    newVideos = newVideos.concat(data.items);
+                
                 this.setState({ 
                     pageToken, 
                     videos: newVideos, 
@@ -96,6 +98,12 @@ class Home extends Component {
                 console.log('DEU RUIM:', error)
             })
         }
+    }
+
+    videoDetail = videoId => {
+        const { history } = this.props;
+        if (videoId)
+            history.push(`${routes.VIDEO_DETAIL}/${videoId}`);
     }
 
     render() {
@@ -136,9 +144,17 @@ class Home extends Component {
                         />
                     </form>
                 </Grid>
-                {videos && (
-                    <Grid item xs={12} id="mainVideos">
-
+                {videos && videos.length > 0 && (
+                    <Grid item xs={12} id="mainVideos" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Grid container style={{ maxWidth: 1280 }}>
+                            {videos.map((video, i) => (
+                                <VideoView
+                                key={i}
+                                videoCurrent={video}
+                                videoDetail={this.videoDetail}
+                                />
+                            ))}
+                        </Grid>
                     </Grid>
                 )}
             </Grid>
@@ -147,4 +163,4 @@ class Home extends Component {
 
 }
 
-export default withStyles(style)(Home);
+export default withRouter(withStyles(style)(Home));

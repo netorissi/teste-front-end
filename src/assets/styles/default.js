@@ -17,5 +17,9 @@ export default theme => ({
 	},
     button: {
         marginTop: theme.spacing(2)
+    },
+    videoThumb: {
+        width: 320,
+        height: 180
     }
 })
