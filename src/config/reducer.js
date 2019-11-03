@@ -1,8 +1,8 @@
 import { combineReducers } from 'redux';
 import rdToaster from '../reducers/toaster';
-import rdUsers from '../reducers/users';
+import rdVideos from '../reducers/videos';
 
 export default combineReducers({
 	rdToaster,
-	rdUsers
+	rdVideos
 });

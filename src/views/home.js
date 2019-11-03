@@ -1,30 +1,41 @@
 import React, { Component } from 'react';
 import { withRouter } from 'react-router-dom';
-import axios from 'axios';
-import * as routes from '../routes/names';
+import { connect } from 'react-redux';
+import clsx from 'clsx';
+
+// ## --------- ACTIONS --------- ## //
+import * as acVideos from '../actions/videos';
+
+// ## --------- COMPONENTS --------- ## //
+import VideoView from '../components/VideoView';
+
+// ## --------- MATERIAL-UI --------- ## //
 import { 
     withStyles,
     Grid,
     TextField,
     InputAdornment,
-    IconButton 
+    IconButton, 
+    Fab,
+    Typography
 } from '@material-ui/core';
-import style from '../assets/styles/default';
-import { MdSearch } from 'react-icons/md';
-import VideoView from '../components/VideoView';
 
-const URL_1 = 'https://www.googleapis.com/youtube/v3/search?part=id,snippet&maxResults=15&q=';
-const URL_2 = '&key=AIzaSyAH3AcuuFSQPCGGM3sa7n44_I_SBSsyTlo';
+// ## --------- ICONS --------- ## //
+import { MdSearch, MdArrowUpward, MdSentimentDissatisfied } from 'react-icons/md';
+
+// ## --------- ROUTES --------- ## //
+import * as routes from '../routes/names';
+
+// ## --------- STYLES --------- ## //
+import style from '../assets/styles/default';
 
 class Home extends Component {
 
     state = {
         textFilter: '',
-        currentPosition: 0,
         inputMove: false,
-        videos: null,
-        pageToken: null,
-        loadingScroll: false
+        activeFilter: false,
+        activeButtonTop: false
     }
 
     componentDidMount() {
@@ -36,7 +47,8 @@ class Home extends Component {
     }
 
     onScroll = async () => {
-        const { pageToken } = this.state;
+        const { pageToken } = this.props.videos;
+        const { dispatch } = this.props;
 
         if (pageToken) {
             const pageInitial = document.getElementById("mainVideos");
@@ -44,60 +56,33 @@ class Home extends Component {
                 ? (pageInitial.offsetTop + pageInitial.clientHeight) 
                 : 0;
 
-            if ((window.innerHeight + window.pageYOffset) >= (pageInitialOffset  + 130)) {
-                this.setState({ loadingScroll: true });
-                
-                setTimeout(async () => {
-                    this.searchApi();
-                }, 500);
-            }
+            if (window.pageYOffset >= (window.innerHeight / 2))
+                this.setState({ activeButtonTop: true })
+            else
+                this.setState({ activeButtonTop: false })
+
+            if ((window.innerHeight + window.pageYOffset) >= (pageInitialOffset))
+                await dispatch(acVideos.getVideos());
         }
 	}
 
     filterChange = event => this.setState({ textFilter: event.target.value });
 
-    moveInput = () => {
-        const elementH = document.getElementById("form-move").offsetTop - 80;
-        const currentPosition = elementH * -1;
-        this.setState({ currentPosition, inputMove: true });
-    }
+    moveToTop = () => window ? window.scrollTo(0, 0) : false;
 
-    sendForm = event => {
-        const { inputMove } = this.state;
+    sendForm = async event => {
         event.preventDefault();
-        if (!inputMove) this.moveInput();
-        this.searchApi();
-    }
+        const { dispatch } = this.props;
+        const { inputMove, textFilter, activeFilter } = this.state;
+        const filter = textFilter.replace(" ", "+");
 
-    searchApi = async () => {
-        const { textFilter, videos, pageToken } = this.state;
+        if (!inputMove)
+            this.setState({ inputMove: true });
 
-        if (textFilter) {
-            
-            const textFormat = textFilter.replace(" ", '+');
+        await dispatch(acVideos.getVideos(filter));
 
-            let URL_YOUTUBE = `${URL_1}${textFormat}${URL_2}`;
-            if (pageToken) URL_YOUTUBE = `${URL_1}${textFormat}&pageToken=${pageToken}${URL_2}`;
-
-            await axios.get(URL_YOUTUBE)
-            .then(resp => {
-                const data = resp.data;
-                const pageToken = data.nextPageToken;
-                let newVideos = videos || [];
-                
-                if (data.items.length > 0)
-                    newVideos = newVideos.concat(data.items);
-                
-                this.setState({ 
-                    pageToken, 
-                    videos: newVideos, 
-                    loadingScroll: false 
-                });
-            })
-            .catch(error => {
-                console.log('DEU RUIM:', error)
-            })
-        }
+        if (!activeFilter)
+            setTimeout(() => this.setState({ activeFilter: true }), 1000);
     }
 
     videoDetail = videoId => {
@@ -109,8 +94,9 @@ class Home extends Component {
     render() {
 
         const { classes } = this.props;
-        const { textFilter, currentPosition, videos } = this.state;
-        console.log(videos)
+        const { videos } = this.props.videos;
+        const { textFilter, inputMove, activeFilter, activeButtonTop } = this.state;
+        const videosLength = videos.length || 0;
 
         return (
             <Grid container className={classes.main}>
@@ -118,8 +104,11 @@ class Home extends Component {
                 id="form-move"
                 item 
                 xs={12}
-                className={classes.root} 
-                style={{ transform: `translateY(${currentPosition}%)` }}>
+                className={clsx(classes.root, {
+					[classes.inputTop]: (videosLength > 0 || inputMove),
+					[classes.inputCenter]: (videosLength === 0)
+				})}
+                >
                     <form onSubmit={this.sendForm} style={{ width: '100%' }}>
                         <TextField
                         autoFocus
@@ -145,7 +134,7 @@ class Home extends Component {
                     </form>
                 </Grid>
                 {videos && videos.length > 0 && (
-                    <Grid item xs={12} id="mainVideos" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Grid item xs={12} id="mainVideos" className={classes.areaVideos}>
                         <Grid container style={{ maxWidth: 1280 }}>
                             {videos.map((video, i) => (
                                 <VideoView
@@ -155,12 +144,40 @@ class Home extends Component {
                                 />
                             ))}
                         </Grid>
+                        {activeButtonTop && (
+                            <Fab 
+                            size="small"
+                            color="secondary"
+                            className={classes.btnTop}
+                            onClick={this.moveToTop}
+                            >
+                                <MdArrowUpward/>
+                            </Fab>
+                        )}
+                    </Grid>
+                )}
+                {videos && videos.length === 0 && activeFilter && (
+                    <Grid item xs={12} className={classes.areaVideos}>
+                        <Grid container style={{ maxWidth: 1280 }}>
+                            <Grid item xs={12} style={{ textAlign: 'center' }}>
+                                <MdSentimentDissatisfied size={70} color="#a2a2a2"/>
+                                <Typography
+                                variant="body2"
+                                color="textSecondary"
+                                >
+                                    Não encontramos nenhum resultado!
+                                </Typography>
+                            </Grid>
+                        </Grid>
                     </Grid>
                 )}
             </Grid>
         );
     }
-
 }
 
-export default withRouter(withStyles(style)(Home));
+const mapStateToProps = state => ({
+	videos: state.rdVideos
+});
+
+export default withRouter(connect(mapStateToProps)(withStyles(style)(Home)));

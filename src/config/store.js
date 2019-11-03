@@ -5,7 +5,7 @@ import reducers from './reducer';
 
 let middlewares = [thunk];
 if (process.env.NODE_ENV !== 'production') {
-	middlewares = [...middlewares, logger]
+	middlewares = [...middlewares, logger];
 }
 
 const store = createStore(reducers, applyMiddleware(...middlewares));
